@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orchestrator Debug UI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.6;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            height: 100vh;
+            gap: 16px;
+            padding: 16px;
+        }
+
+        .panel {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 12px 16px;
+            background: #0d1117;
+            border-bottom: 1px solid #30363d;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow: auto;
+            padding: 12px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .state-box {
+            background: #0d1117;
+            border-left: 3px solid #58a6ff;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .state-box.error {
+            border-left-color: #f85149;
+        }
+
+        .state-box.success {
+            border-left-color: #3fb950;
+        }
+
+        .state-key {
+            color: #79c0ff;
+            font-weight: 600;
+        }
+
+        .state-value {
+            color: #8b949e;
+            word-break: break-word;
+        }
+
+        .event-item {
+            padding: 8px;
+            margin: 4px 0;
+            background: #0d1117;
+            border-left: 3px solid #30363d;
+            border-radius: 3px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .event-item:hover {
+            background: #161b22;
+            border-left-color: #58a6ff;
+        }
+
+        .event-item.expanded {
+            background: #161b22;
+            border-left-color: #58a6ff;
+        }
+
+        .event-time {
+            color: #8b949e;
+            font-size: 11px;
+        }
+
+        .event-type {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #1f6feb;
+            color: #fff;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        .event-payload {
+            margin-top: 8px;
+            padding: 8px;
+            background: #0d1117;
+            border-radius: 3px;
+            font-family: "Courier New", monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            font-size: 11px;
+        }
+
+        .event-item.expanded .event-payload {
+            display: block;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 8px 12px;
+            background: #238636;
+            color: #fff;
+            border: 1px solid #3db76f;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #2ea043;
+            border-color: #56d364;
+        }
+
+        button.secondary {
+            background: #1f6feb;
+            border-color: #388bfd;
+        }
+
+        button.secondary:hover {
+            background: #388bfd;
+        }
+
+        button.danger {
+            background: #da3633;
+            border-color: #f85149;
+        }
+
+        button.danger:hover {
+            background: #f85149;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        input[type="text"],
+        select {
+            flex: 1;
+            padding: 8px 12px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            color: #c9d1d9;
+            font-size: 12px;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #1f6feb;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .status-ready {
+            background: #238636;
+        }
+
+        .status-running {
+            background: #d29922;
+        }
+
+        .status-error {
+            background: #da3633;
+        }
+
+        .status-waiting-quota {
+            background: #a371f7;
+        }
+
+        .ws-status {
+            position: fixed;
+            bottom: 12px;
+            right: 12px;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            opacity: 0.7;
+        }
+
+        .ws-status.connected {
+            background: #3fb950;
+            color: #fff;
+        }
+
+        .ws-status.disconnected {
+            background: #da3633;
+            color: #fff;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #8b949e;
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-banner {
+            background: #da3633;
+            border: 1px solid #f85149;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        .error-banner.show {
+            display: block;
+        }
+
+        .error-banner-title {
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .error-banner-message {
+            color: #f0f6fc;
+            font-size: 12px;
+            word-break: break-word;
+        }
+
+        .logs-panel {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            margin-top: 12px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .logs-panel.show {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logs-panel-header {
+            padding: 8px 12px;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .logs-panel-content {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 200px;
+            padding: 8px 12px;
+            font-family: "Courier New", monospace;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .log-line {
+            padding: 2px 0;
+            color: #8b949e;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .empty-state-text {
+            color: #8b949e;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Main: Event Timeline -->
+        <div class="panel">
+            <div class="panel-header">Live Event Timeline</div>
+            <div class="input-group" style="padding: 12px; border-bottom: 1px solid #30363d;">
+                <input type="text" id="goalInput" placeholder="Enter goal (e.g., Create a Python script)">
+                <button onclick="startRun()">Start Run</button>
+            </div>
+            <div class="input-group" style="padding: 0 12px;">
+                <select id="filterType">
+                    <option value="">All Types</option>
+                    <option value="run_started">Run Started</option>
+                    <option value="plan_created">Plan Created</option>
+                    <option value="step_started">Step Started</option>
+                    <option value="worker_selected">Worker Selected</option>
+                    <option value="llm_request">LLM Request</option>
+                    <option value="llm_response">LLM Response</option>
+                    <option value="tool_started">Tool Started</option>
+                    <option value="worker_action">Worker Action</option>
+                    <option value="file_written">File Written</option>
+                    <option value="step_completed">Step Completed</option>
+                    <option value="error">Error</option>
+                </select>
+                <button class="secondary" onclick="togglePause()">Pause</button>
+                <button class="danger" onclick="clearEvents()">Clear</button>
+                <button class="danger" id="cancelBtn" style="display: none;" onclick="cancelRun()">Cancel Run</button>
+            </div>
+            <div class="panel-content" id="timeline"></div>
+        </div>
+
+        <!-- Sidebar: State & Controls -->
+        <div class="sidebar">
+            <!-- State -->
+            <div class="panel">
+                <div class="panel-header">Orchestrator State</div>
+                <div class="panel-content" id="statePanel">
+                    <div class="state-box">
+                        <div><span class="state-key">Status:</span> <span class="badge status-ready">Ready</span></div>
+                        <div style="margin-top: 4px;"><span class="state-key">Run:</span> <span class="state-value">-</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Final Output -->
+            <div class="panel">
+                <div class="panel-header">FINAL OUTPUT</div>
+                <div class="panel-content" id="finalOutputPanel" style="min-height: 80px; background: #0f1419; border: 1px solid #30363d; border-radius: 4px; padding: 12px; color: #8b949e; font-size: 13px; white-space: pre-wrap; word-break: break-word;">
+                    <span style="color: #6e7681;">Awaiting execution...</span>
+                </div>
+            </div>
+
+            <!-- Artifacts -->
+            <div class="panel">
+                <div class="panel-header">ARTIFACTS</div>
+                <div class="panel-content" id="artifactsPanel" style="font-size: 12px; color: #8b949e;">
+                    <span style="color: #6e7681;">No artifacts yet.</span>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="panel">
+                <div class="panel-header">Info</div>
+                <div class="panel-content" style="font-size: 12px;">
+                    <p style="margin-bottom: 8px;">Live observability dashboard for orchestration agent execution.</p>
+                    <p>
+                        <strong>Event Timeline:</strong> Click events to expand JSON payload.
+                    </p>
+                    <p style="margin-top: 8px;">
+                        <strong>State:</strong> Updates every 1 second.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Export -->
+            <div>
+                <button class="secondary" onclick="exportEvents()" style="width: 100%;">Export Events JSON</button>
+            </div>
+
+            <!-- Event Log Viewer -->
+            <div class="panel">
+                <div class="panel-header">Event Log Viewer</div>
+                <div class="panel-content" style="font-size: 12px;">
+                    <p style="margin-bottom: 8px;">Load persisted event logs for a completed run.</p>
+                    <div class="input-group" style="margin-bottom: 8px;">
+                        <input type="text" id="logRunId" placeholder="Enter run ID..." style="font-size: 12px;">
+                        <button class="secondary" onclick="loadEventLog()" style="font-size: 12px;">Load Log</button>
+                    </div>
+                    <div id="logStatus" style="color: #6e7681; font-size: 11px; margin-bottom: 8px;"></div>
+                    <button class="secondary" onclick="downloadEventLog()" style="width: 100%; font-size: 12px;">Download as JSONL</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ws-status disconnected" id="wsStatus">● Disconnected</div>
+
+    <!-- User Input Modal -->
+    <div id="userInputModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 24px; max-width: 500px; width: 90%; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+            <h2 style="margin-top: 0; color: #c9d1d9;">Orchestrator Needs Input</h2>
+            <div id="userInputQuestion" style="color: #8b949e; margin: 16px 0; font-size: 14px;"></div>
+            <div id="userInputWhy" style="color: #6e7681; margin: 12px 0; font-size: 13px; font-style: italic;"></div>
+            <input type="text" id="userInputResponse" placeholder="Enter your response..." style="width: 100%; padding: 8px 12px; background: #161b22; border: 1px solid #30363d; color: #c9d1d9; border-radius: 6px; font-family: monospace; font-size: 13px; box-sizing: border-box; margin: 16px 0;">
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="secondary" onclick="closeUserInputModal()" style="padding: 6px 12px;">Cancel</button>
+                <button onclick="submitUserInput()" style="padding: 6px 12px;">Send Response</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let events = [];
+        let isPaused = false;
+        let wsSocket = null;
+        let currentRunId = null;
+        
+        // ====== POLLING STATE (Non-stacking setTimeout pattern) ======
+        let pollTimer = null;              // Single timeout handle - prevents stacking
+        let isPollingActive = false;       // Guard against duplicate start calls
+        let currentState = {};
+        let lastStateHash = "";
+        let consecutiveUnchangedPolls = 0; // Track unchanged state for backoff
+        let wsConnected = false;
+
+        const TIMELINE = document.getElementById('timeline');
+        const STATE_PANEL = document.getElementById('statePanel');
+        const WS_STATUS = document.getElementById('wsStatus');
+        const FILTER_TYPE = document.getElementById('filterType');
+
+        // Connect to WebSocket
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            wsSocket = new WebSocket(`${protocol}//${window.location.host}/ws/events`);
+
+            wsSocket.onopen = () => {
+                console.log('[WebSocket] Connected');
+                WS_STATUS.textContent = '● Connected';
+                WS_STATUS.className = 'ws-status connected';
+                wsConnected = true;
+            };
+
+            wsSocket.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                if (!isPaused) {
+                    addEvent(msg);
+                }
+            };
+
+            wsSocket.onerror = (error) => {
+                console.error('[WebSocket] Error:', error);
+            };
+
+            wsSocket.onclose = () => {
+                console.log('[WebSocket] Closed');
+                WS_STATUS.textContent = '● Disconnected';
+                WS_STATUS.className = 'ws-status disconnected';
+                wsConnected = false;
+                // Attempt reconnect
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        // ===================================================================
+        // POLLING: Non-stacking setTimeout pattern (never creates duplicate timers)
+        // ===================================================================
+        // Problem solved: Old setInterval pattern created new intervals on each poll,
+        // causing exponential growth. This pattern uses a single setTimeout that
+        // reschedules itself after each poll - GUARANTEED no stacking.
+        
+        function startPolling() {
+            // IDEMPOTENT: Multiple calls do nothing if already polling
+            if (isPollingActive) {
+                console.log('[Polling] Already active, skipping duplicate start');
+                return;
+            }
+            
+            console.log('[Polling] Starting (non-stacking setTimeout pattern)');
+            isPollingActive = true;
+            consecutiveUnchangedPolls = 0;
+            scheduleNextPoll(0); // Poll immediately, then schedule next
+        }
+        
+        function stopPolling() {
+            console.log('[Polling] Stopping');
+            if (pollTimer) {
+                clearTimeout(pollTimer);
+                pollTimer = null;
+            }
+            isPollingActive = false;
+        }
+        
+        async function pollOnce() {
+            // Silently return if hidden (don't poll, but keep timer alive for when unhidden)
+            if (document.hidden) {
+                console.log('[Polling] Paused (page hidden)');
+                return false; // Return false = don't reschedule until unhidden
+            }
+
+            try {
+                const url = currentRunId 
+                    ? `/api/state?run_id=${encodeURIComponent(currentRunId)}`
+                    : '/api/state';
+                const res = await fetch(url);
+                const state = await res.json();
+                
+                // Track if state changed
+                const stateHash = JSON.stringify(state);
+                const stateChanged = stateHash !== lastStateHash;
+                
+                if (stateChanged) {
+                    consecutiveUnchangedPolls = 0;
+                    lastStateHash = stateHash;
+                    currentState = state;
+                    updateStatePanel(state);
+                    updateMainContent(state);
+                    console.log('[Polling] State updated');
+                } else {
+                    consecutiveUnchangedPolls++;
+                    // console.log(`[Polling] State unchanged (${consecutiveUnchangedPolls}/5)`);
+                }
+                
+                return true; // Success, reschedule
+            } catch (e) {
+                console.error('[Polling] Error:', e);
+                return true; // Even on error, reschedule
+            }
+        }
+        
+        function scheduleNextPoll(msDelay) {
+            // Kill any existing timer (safety check)
+            if (pollTimer) {
+                clearTimeout(pollTimer);
+                pollTimer = null;
+            }
+
+            // If polling stopped, don't reschedule
+            if (!isPollingActive) {
+                return;
+            }
+
+            // If page is hidden, check periodically until unhidden
+            if (document.hidden) {
+                pollTimer = setTimeout(() => {
+                    scheduleNextPoll(500); // Check every 500ms while hidden
+                }, 500);
+                return;
+            }
+
+            // Calculate next interval based on state
+            let nextIntervalMs = 2000; // Default: 2 seconds
+
+            // Backoff rules (in priority order):
+            if (currentState.status === "completed" || currentState.status === "error") {
+                nextIntervalMs = 10000; // 10s after completion/error
+            } else if (wsConnected) {
+                nextIntervalMs = 5000; // 5s if WebSocket connected and receiving
+            } else if (consecutiveUnchangedPolls >= 5) {
+                nextIntervalMs = 10000; // 10s if state unchanged for 5 polls
+            }
+
+            // Schedule the next poll
+            const delayMs = msDelay || nextIntervalMs;
+            pollTimer = setTimeout(() => {
+                pollOnce().then((shouldContinue) => {
+                    if (shouldContinue) {
+                        scheduleNextPoll(); // Automatic recursion
+                    } else {
+                        // pollOnce returned false (e.g., page hidden)
+                        scheduleNextPoll(500); // Retry soon
+                    }
+                });
+            }, delayMs);
+        }
+        // ===================================================================
+
+        // Update main content with empty state / running / error
+        function updateMainContent(state) {
+            if (!state || state.status === "idle") {
+                // Show ready/idle state
+                TIMELINE.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">✓</div>
+                        <div class="empty-state-title">Ready</div>
+                        <div class="empty-state-text">Enter a goal above and click "Start Run"</div>
+                    </div>
+                `;
+            }
+        }
+        function addEvent(event) {
+            events.unshift(event); // Newest first
+            if (events.length > 500) events.pop(); // Keep last 500
+            currentRunId = event.run_id;
+            
+            // Handle need_user event - show modal
+            if (event.type === 'need_user') {
+                showUserInputModal(event.payload);
+            }
+            
+            renderTimeline();
+        }
+
+        // Render event timeline
+        function renderTimeline() {
+            const filterType = FILTER_TYPE.value;
+            const filtered = events.filter(e => !filterType || e.type === filterType);
+
+            TIMELINE.innerHTML = filtered.map((e, idx) => `
+                <div class="event-item" onclick="toggleEvent(this, ${idx})">
+                    <div>
+                        <span class="event-time">${formatTime(e.ts_iso)}</span>
+                        <span class="event-type">${e.type}</span>
+                        ${e.step_id ? `<span style="color: #8b949e; font-size: 11px;">[${e.step_id}]</span>` : ''}
+                    </div>
+                    <div class="event-payload">${JSON.stringify(e.payload, null, 2)}</div>
+                </div>
+            `).join('');
+        }
+
+        function toggleEvent(elem, idx) {
+            elem.classList.toggle('expanded');
+        }
+
+        function formatTime(iso) {
+            const date = new Date(iso);
+            const time = date.toLocaleTimeString('en-US', { hour12: false });
+            const ms = date.getMilliseconds().toString().padStart(3, '0');
+            return `${time}.${ms}`;
+        }
+
+        // Update main content with empty state / running / error
+        function updateMainContent(state) {
+            if (!state || state.status === "idle") {
+                // Show ready/idle state
+                TIMELINE.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">✓</div>
+                        <div class="empty-state-title">Ready</div>
+                        <div class="empty-state-text">Enter a goal above and click "Start Run"</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Update state panel
+        function updateStatePanel(state) {
+            if (!state || Object.keys(state).length === 0 || state.status === "idle") {
+                STATE_PANEL.innerHTML = `
+                    <div class="state-box">
+                        <div><span class="state-key">Status:</span> <span class="badge status-ready">Ready</span></div>
+                        <div style="margin-top: 4px;"><span class="state-key">Run:</span> <span class="state-value">-</span></div>
+                    </div>
+                `;
+                return;
+            }
+
+            const status = state.status || 'unknown';
+            const statusBadge = {
+                'running': 'status-running',
+                'completed': 'status-ready',
+                'waiting_user': 'status-running',
+                'waiting_quota': 'status-waiting-quota',
+                'error': 'status-error',
+                'idle': 'status-ready'
+            }[status] || 'status-ready';
+
+            // Error banner
+            const errorBanner = state.last_error ? `
+                <div class="error-banner show" style="margin-bottom: 12px;">
+                    <div class="error-banner-title">⚠️ Error</div>
+                    <div class="error-banner-message">${state.last_error}</div>
+                </div>
+            ` : '';
+
+            // Logs panel
+            const logs = state.logs || [];
+            const logsPanel = logs.length > 0 ? `
+                <div class="logs-panel show">
+                    <div class="logs-panel-header">Execution Log (last 10)</div>
+                    <div class="logs-panel-content">
+                        ${logs.slice(-10).map(log => `<div class="log-line">${log}</div>`).join('')}
+                    </div>
+                </div>
+            ` : '';
+
+            STATE_PANEL.innerHTML = `
+                ${errorBanner}
+                <div class="state-box ${statusBadge.includes('error') ? 'error' : ''}">
+                    <div><span class="state-key">Status:</span> <span class="badge ${statusBadge}">${status.toUpperCase()}</span></div>
+                    <div style="margin-top: 4px;"><span class="state-key">Run ID:</span> <span class="state-value" title="${state.run_id || '-'}">${(state.run_id || '-').substring(0, 16)}</span></div>
+                    <div style="margin-top: 4px;"><span class="state-key">Goal:</span> <span class="state-value">${(state.goal || '-').substring(0, 40)}...</span></div>
+                    ${state.total_steps > 0 ? `
+                        <div style="margin-top: 4px;"><span class="state-key">Progress:</span> <span class="state-value">Step ${state.current_step}/${state.total_steps}</span></div>
+                    ` : ''}
+                    ${state.last_run_at ? `
+                        <div style="margin-top: 4px;"><span class="state-key">Started:</span> <span class="state-value">${new Date(state.last_run_at * 1000).toLocaleTimeString()}</span></div>
+                    ` : ''}
+                </div>
+                ${logsPanel}
+            `;
+            
+            // Update Final Output panel
+            const finalOutputPanel = document.getElementById('finalOutputPanel');
+            if (status === 'waiting_user') {
+                finalOutputPanel.innerHTML = '<span style="color: #d29922;">⏳ Waiting for your response…</span>';
+            } else if (state.final_output) {
+                finalOutputPanel.innerHTML = `<span style="color: #c9d1d9;">${state.final_output}</span>`;
+            } else if (state.last_summary) {
+                finalOutputPanel.innerHTML = `<span style="color: #8b949e;">${state.last_summary}</span>`;
+            } else {
+                finalOutputPanel.innerHTML = '<span style="color: #6e7681;">Awaiting execution...</span>';
+            }
+            
+            // Update Artifacts panel
+            const artifactsPanel = document.getElementById('artifactsPanel');
+            if (state.artifacts && state.artifacts.length > 0) {
+                const artifactsList = state.artifacts.map(artifact => {
+                    const sizeStr = artifact.size > 1024 
+                        ? (artifact.size / 1024).toFixed(1) + ' KB' 
+                        : artifact.size + ' B';
+                    return `<div style="margin-bottom: 8px; padding: 8px; background: #0f1419; border-radius: 3px; border: 1px solid #30363d;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="flex: 1; word-break: break-all;">
+                                <span style="color: #79c0ff;">${artifact.path}</span>
+                                <span style="color: #6e7681; margin-left: 8px;">${sizeStr}</span>
+                            </div>
+                            <button class="secondary" onclick="copyToClipboard('${artifact.path}')" style="margin-left: 8px; padding: 4px 8px; font-size: 11px;">Copy Path</button>
+                        </div>
+                    </div>`;
+                }).join('');
+                artifactsPanel.innerHTML = artifactsList;
+            } else {
+                artifactsPanel.innerHTML = '<span style="color: #6e7681;">No artifacts yet.</span>';
+            }
+            
+            // Show/hide Cancel button based on status
+            const cancelBtn = document.getElementById('cancelBtn');
+            if (status === 'running' || status === 'waiting_quota') {
+                cancelBtn.style.display = '';
+            } else {
+                cancelBtn.style.display = 'none';
+            }
+        }
+
+        // Start a new run
+        async function startRun() {
+            const goal = document.getElementById('goalInput').value.trim();
+            if (!goal) {
+                alert('Please enter a goal');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ goal })
+                });
+                
+                const data = await res.json();
+                
+                // Check for API error response
+                if (!res.ok || data.ok === false) {
+                    const errorMsg = data.error || 'Unknown error starting run';
+                    const hint = data.hint || '';
+                    alert(`Error: ${errorMsg}\n${hint}`);
+                    console.error('[Run] Error response:', data);
+                    return;
+                }
+                
+                console.log('[Run] Started:', data);
+                currentRunId = data.run_id;
+                
+                // Reset event list for new run
+                events = [];
+                renderTimeline();
+            } catch (e) {
+                alert('Network error starting run: ' + e);
+                console.error('[Run] Exception:', e);
+            }
+        }
+
+        // Cancel a running run
+        async function cancelRun() {
+            if (!currentRunId) {
+                alert('No active run to cancel');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/cancel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ run_id: currentRunId })
+                });
+                
+                const data = await res.json();
+                
+                if (!res.ok || data.ok === false) {
+                    const errorMsg = data.error || 'Unknown error cancelling run';
+                    alert(`Error: ${errorMsg}`);
+                    console.error('[Cancel] Error response:', data);
+                    return;
+                }
+                
+                console.log('[Cancel] Run cancelled:', data);
+            } catch (e) {
+                alert('Network error cancelling run: ' + e);
+                console.error('[Cancel] Exception:', e);
+            }
+        }
+
+        // Toggle pause
+        function togglePause() {
+            isPaused = !isPaused;
+            document.querySelector('button[onclick="togglePause()"]').textContent = 
+                isPaused ? 'Resume' : 'Pause';
+        }
+
+        // User input modal functions
+        function showUserInputModal(payload) {
+            const modal = document.getElementById('userInputModal');
+            const question = document.getElementById('userInputQuestion');
+            const why = document.getElementById('userInputWhy');
+            const response = document.getElementById('userInputResponse');
+            
+            question.textContent = payload.question || 'Orchestrator needs your input';
+            why.textContent = payload.why ? `Why: ${payload.why}` : '';
+            response.value = '';
+            response.focus();
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeUserInputModal() {
+            document.getElementById('userInputModal').style.display = 'none';
+        }
+
+        async function submitUserInput() {
+            if (!currentRunId) {
+                alert('No active run');
+                return;
+            }
+
+            const response = document.getElementById('userInputResponse').value.trim();
+            if (!response) {
+                alert('Please enter a response');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/respond', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        run_id: currentRunId,
+                        response: response 
+                    })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok || data.ok === false) {
+                    alert('Failed to submit response: ' + (data.error || 'Unknown error'));
+                    return;
+                }
+
+                console.log('[Response] Submitted successfully');
+                closeUserInputModal();
+            } catch (e) {
+                alert('Error submitting response: ' + e.message);
+                console.error('[Response] Exception:', e);
+            }
+        }
+
+        // Clear events
+        function clearEvents() {
+            events = [];
+            renderTimeline();
+        }
+
+        // Export events
+        function exportEvents() {
+            const json = JSON.stringify(events, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `events_${new Date().toISOString()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Load persisted event log for a run
+        async function loadEventLog() {
+            const runId = document.getElementById('logRunId').value.trim();
+            const logStatus = document.getElementById('logStatus');
+            
+            if (!runId) {
+                logStatus.textContent = '⚠️ Enter a run ID';
+                logStatus.style.color = '#f85149';
+                return;
+            }
+            
+            logStatus.textContent = '⏳ Loading...';
+            logStatus.style.color = '#6e7681';
+            
+            try {
+                const response = await fetch(`/api/run/${runId}/events`);
+                const data = await response.json();
+                
+                if (!data.ok) {
+                    logStatus.textContent = `❌ ${data.error}`;
+                    logStatus.style.color = '#f85149';
+                    return;
+                }
+                
+                // Load events into timeline
+                events = data.events || [];
+                renderTimeline();
+                
+                logStatus.textContent = `✅ Loaded ${data.event_count} events for run ${runId.substring(0, 8)}...`;
+                logStatus.style.color = '#3fb950';
+                
+                // Store run ID for download
+                window.lastLoadedRunId = runId;
+                
+            } catch (e) {
+                logStatus.textContent = `❌ Error: ${e.message}`;
+                logStatus.style.color = '#f85149';
+                console.error('[EventLog] Load error:', e);
+            }
+        }
+
+        // Download the last loaded event log as JSONL
+        function downloadEventLog() {
+            const runId = window.lastLoadedRunId || document.getElementById('logRunId').value.trim();
+            
+            if (!runId) {
+                alert('No run loaded. Enter a run ID and click Load Log first.');
+                return;
+            }
+            
+            // Download from API (serve JSONL file)
+            const link = document.createElement('a');
+            link.href = `/api/run/${runId}/events-download`;
+            link.download = `events_${runId.substring(0, 8)}.jsonl`;
+            link.click();
+        }
+
+        // Copy text to clipboard
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Show brief visual confirmation
+                const toast = document.createElement('div');
+                toast.textContent = 'Copied: ' + text;
+                toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: #238636; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 1000;';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+        }
+
+        // Filter by type
+        FILTER_TYPE.addEventListener('change', renderTimeline);
+
+        // Handle page visibility changes (pause polling if hidden)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('[Visibility] Page hidden, pausing polling');
+                // Don't stop, just let pollOnce() skip - timer will retry when visible
+            } else {
+                console.log('[Visibility] Page visible, resuming polling');
+                // Trigger immediate poll when page becomes visible
+                if (isPollingActive) {
+                    pollOnce().then((shouldContinue) => {
+                        if (shouldContinue) {
+                            scheduleNextPoll(2000); // Resume with normal interval
+                        }
+                    });
+                }
+            }
+        });
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            console.log('[Unload] Cleaning up polling');
+            stopPolling();
+        });
+
+        // User Input Modal Functions
+        function showUserInputModal(payload) {
+            const modal = document.getElementById('userInputModal');
+            const question = document.getElementById('userInputQuestion');
+            const why = document.getElementById('userInputWhy');
+            const input = document.getElementById('userInputResponse');
+            
+            question.textContent = payload.question || 'Please provide your input:';
+            why.textContent = payload.why ? `${payload.why}` : '';
+            input.value = '';
+            input.focus();
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeUserInputModal() {
+            const modal = document.getElementById('userInputModal');
+            modal.style.display = 'none';
+        }
+
+        async function submitUserInput() {
+            if (!currentRunId) {
+                alert('No active run');
+                return;
+            }
+            
+            const input = document.getElementById('userInputResponse');
+            const response = input.value.trim();
+            
+            if (!response) {
+                alert('Please enter a response');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/respond', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ run_id: currentRunId, response: response })
+                });
+                
+                const data = await res.json();
+                
+                if (!res.ok || !data.ok) {
+                    alert('Failed to submit: ' + (data.error || 'Unknown error'));
+                    return;
+                }
+                
+                console.log('[UserInput] Submitted successfully');
+                closeUserInputModal();
+            } catch (e) {
+                console.error('[UserInput] Error:', e);
+                alert('Error submitting response: ' + e.message);
+            }
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeUserInputModal();
+            }
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('[Init] Page loaded, starting WebSocket and polling');
+            connectWebSocket();
+            startPolling(); // Start non-stacking polling
+        });
+    </script>
+</body>
+</html>
