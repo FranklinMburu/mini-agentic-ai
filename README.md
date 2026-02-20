@@ -1,5 +1,7 @@
 # Mini Agentic AI - Multi-Worker LLM Orchestration System
 
+> **⚠️ Copyright Notice**: This project is protected intellectual property. It is shared for recruitment, portfolio evaluation, and educational purposes only. Unauthorized copying, modification, or commercial use is strictly prohibited. See [LICENSE](LICENSE) for full terms.
+
 A lightweight Python orchestration engine that coordinates specialized AI workers (Planner, Coder, Reviewer) to solve complex tasks. Built with FastAPI, WebSocket real-time event streaming, and Google Generative AI.
 
 ## Overview
