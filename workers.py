@@ -8,7 +8,7 @@ import time
 import logging
 from typing import Any, Dict, Optional, Tuple
 from genai_wrapper import Client
-import google.generativeai as genai
+from google import genai
 
 logger = logging.getLogger("Workers")
 

@@ -1,5 +1,6 @@
 fastapi
 uvicorn
-google-generativeai
+google-genai
+httpx
 pytest
 websockets

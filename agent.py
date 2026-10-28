@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
 from genai_wrapper import Client
-import google.generativeai as genai
+from google import genai
 
 
 # -------------------------
