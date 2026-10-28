@@ -14,7 +14,7 @@ import threading
 from dataclasses import dataclass, asdict, field
 from typing import Any, Dict, List, Optional
 from genai_wrapper import Client
-import google.generativeai as genai
+from google import genai
 
 from events import event_bus
 from tools import tools, validate_path, RateLimiter

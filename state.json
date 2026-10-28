@@ -1,0 +1,44 @@
+{
+  "run_id": "6658cefe-82fe-4e3b-ae79-3a553a44b18d",
+  "goal": "Test goal",
+  "plan": {
+    "type": "plan",
+    "steps": [
+      {
+        "description": "First step"
+      },
+      {
+        "description": "Second step"
+      }
+    ]
+  },
+  "current_step": 2,
+  "total_steps": 2,
+  "status": "completed",
+  "user_response": null,
+  "completed_steps": [],
+  "errors": [],
+  "notes": [
+    "User input needed: What should I do?"
+  ],
+  "logs": [
+    "Goal: Test goal",
+    "Plan created with 2 steps",
+    "Step 1/2: First step",
+    "  Routed to: coder",
+    "  Action: need_user",
+    "Waiting for user input",
+    "Received user input: Here is my answer",
+    "Step 2/2: Second step",
+    "  Routed to: coder",
+    "  Action: step_complete",
+    "Run completed"
+  ],
+  "last_error": "",
+  "last_summary": "Step completed",
+  "final_output": "Run completed",
+  "last_run_at": 1793196590.35103,
+  "updated_at": 1793196591.3660524,
+  "artifacts": [],
+  "last_worker": "coder"
+}
